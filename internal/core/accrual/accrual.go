@@ -114,11 +114,14 @@ func (s *Service) processOrder(ctx context.Context, orderNumber string) error {
 		return fmt.Errorf("error occurred during getting order statu: %w", err)
 	}
 	err = s.updateOrderStatus(ctx, order)
-	logger.Log.Error("error during updating order status", zap.Error(err))
-	return fmt.Errorf("error occurred during updating order status: %w", err)
+	if err != nil {
+		logger.Log.Error("error during updating order status", zap.Error(err))
+		return fmt.Errorf("error occurred during updating order status: %w", err)
+	}
+	return nil
 }
 
-func (s *Service) Run(ctx context.Context) error {
+func (s *Service) Run(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	orders := make(chan string, tasksCapacity)
 
@@ -143,9 +146,9 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 	if err := g.Wait(); err != nil {
 		logger.Log.Error("error occurred", zap.Error(err))
-		return fmt.Errorf("error occurred in worker: %w", err)
+		return
 	}
-	return nil
+	return
 }
 
 func (s *Service) worker(ctx context.Context, orders <-chan string, id int) error {

@@ -10,7 +10,7 @@ import (
 const (
 	tokenTTL                   = 3600
 	defaultAccrualPollInterval = 5
-	defaultAccrualRateLimit    = 15
+	defaultAccrualRateLimit    = 5
 	defaultAccrualTimeout      = 2
 )
 
