@@ -51,7 +51,7 @@ func (wp *WithdrawalPostgres) getBalance(ctx context.Context, tx Transaction, us
 		return nil, fmt.Errorf("failed to get balance in PG: %w", err)
 	}
 
-	balance.Current = float32(balance.Current) / accrualFactor
+	balance.Current = float32(balance.Current-balance.Withdrawn) / accrualFactor
 	balance.Withdrawn = float32(balance.Withdrawn) / accrualFactor
 	return &balance, nil
 }
@@ -74,7 +74,7 @@ func (wp *WithdrawalPostgres) WithdrawBonuses(ctx context.Context, userID int, w
 	if err != nil {
 		return fmt.Errorf("failed to get balance for withdraw bonuses: %w", err)
 	}
-	if (balance.Current - balance.Withdrawn) < withdraw.Sum {
+	if balance.Current < withdraw.Sum {
 		return errs.ErrNotEnoughFunds
 	}
 	_, err = tx.ExecContext(

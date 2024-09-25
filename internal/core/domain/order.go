@@ -4,7 +4,6 @@ const (
 	Processed  = "PROCESSED"
 	Processing = "PROCESSING"
 	New        = "NEW"
-	Invalid    = "INVALID"
 	Registered = "REGISTERED"
 )
 
