@@ -3,6 +3,7 @@ package rest
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"gophermart/cmd/pkg/errs"
 	"gophermart/internal/adapters/api/validation"
 	"gophermart/internal/core/domain"
@@ -63,7 +64,7 @@ func (h *Handler) createToken(w http.ResponseWriter, req *http.Request, user *do
 		handleAuthError(w, err)
 		return
 	}
-	w.Header().Set(authorization, token)
+	w.Header().Set(authorization, fmt.Sprintf("Bearer %s", token))
 	w.Header().Set(contentType, applicationJSON)
 	if err = json.NewEncoder(w).Encode(domain.Token{Token: token}); err != nil {
 		logger.Log.Error("error encoding token", zap.Error(err))

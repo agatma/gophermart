@@ -5,6 +5,7 @@ import (
 	"gophermart/internal/logger"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -63,7 +64,8 @@ func (h *Handler) loggingRequestMiddleware(next http.Handler) http.Handler {
 
 func (h *Handler) authorizeRequestMiddleware(next http.Handler) http.Handler {
 	authFn := func(w http.ResponseWriter, r *http.Request) {
-		accessToken := r.Header.Get(authorization)
+		rawToken := r.Header.Get(authorization)
+		accessToken := strings.TrimPrefix(rawToken, "Bearer ")
 		if accessToken == "" {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
