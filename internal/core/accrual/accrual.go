@@ -146,9 +146,7 @@ func (s *Service) Run(ctx context.Context) {
 	}
 	if err := g.Wait(); err != nil {
 		logger.Log.Error("error occurred", zap.Error(err))
-		return
 	}
-	return
 }
 
 func (s *Service) worker(ctx context.Context, orders <-chan string, id int) error {
