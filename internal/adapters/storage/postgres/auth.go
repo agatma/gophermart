@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"gophermart/internal/core/domain"
 
 	"gophermart/cmd/pkg/errs"
@@ -26,7 +27,7 @@ func NewAuthPostgres(db *sqlx.DB) *AuthPostgres {
 	}
 }
 
-func (ap *AuthPostgres) GetUserId(ctx context.Context, user *domain.UserIn) (int, error) {
+func (ap *AuthPostgres) GetUserID(ctx context.Context, user *domain.UserIn) (int, error) {
 	var id int
 	row := ap.db.QueryRowContext(
 		ctx,
@@ -38,7 +39,7 @@ func (ap *AuthPostgres) GetUserId(ctx context.Context, user *domain.UserIn) (int
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, errs.ErrInvalidLoginOrPassword
 		}
-		return 0, err
+		return 0, fmt.Errorf("failed to query user: %w", err)
 	}
 	return id, nil
 }
@@ -57,7 +58,7 @@ func (ap *AuthPostgres) CreateUser(ctx context.Context, user *domain.UserIn) err
 		if ok && pgxErr.Code == PGUniqueViolationCode {
 			return errs.ErrLoginAlreadyExist
 		}
-		return err
+		return fmt.Errorf("failed to insert user in PG: %w", err)
 	}
 	return nil
 }

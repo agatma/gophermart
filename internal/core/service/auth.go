@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"gophermart/internal/adapters/storage"
 	"gophermart/internal/config"
 	"gophermart/internal/core/domain"
 	"gophermart/internal/shared-kernel/hash"
@@ -11,43 +13,45 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-type AuthStorage interface {
-	CreateUser(ctx context.Context, user *domain.UserIn) error
-	GetUserId(ctx context.Context, user *domain.UserIn) (int, error)
-}
-
 type AuthService struct {
-	storage AuthStorage
+	storage storage.Authorization
 	config  *config.Config
 }
 
-func newAuthService(storage AuthStorage, config *config.Config) *AuthService {
+func newAuthService(storage storage.Authorization, config *config.Config) *AuthService {
 	return &AuthService{storage: storage, config: config}
 }
 
 func (auth *AuthService) CreateUser(ctx context.Context, user *domain.UserIn) error {
 	user.Password = hash.Encode([]byte(user.Password), auth.config.HashKey)
-	return auth.storage.CreateUser(ctx, user)
+	if err := auth.storage.CreateUser(ctx, user); err != nil {
+		return fmt.Errorf("could not create user: %w", err)
+	}
+	return nil
 }
 
 func (auth *AuthService) CreateToken(ctx context.Context, user *domain.UserIn) (string, error) {
 	user.Password = hash.Encode([]byte(user.Password), auth.config.HashKey)
-	userId, err := auth.storage.GetUserId(ctx, user)
+	userID, err := auth.storage.GetUserID(ctx, user)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("could not get user id: %w", err)
 	}
 	tokenClaim := domain.TokenClaims{
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Duration(auth.config.TokenTTLSeconds) * time.Second).Unix(),
 			IssuedAt:  time.Now().Unix(),
 		},
-		UserID: userId,
+		UserID: userID,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &tokenClaim)
-	return token.SignedString([]byte(auth.config.TokenKey))
+	signedToken, err := token.SignedString([]byte(auth.config.TokenKey))
+	if err != nil {
+		return "", fmt.Errorf("could not sign token: %w", err)
+	}
+	return signedToken, nil
 }
 
-func (auth *AuthService) GetUserId(accessToken string) (int, error) {
+func (auth *AuthService) GetUserID(accessToken string) (int, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &domain.TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("invalid signing method")
@@ -55,14 +59,14 @@ func (auth *AuthService) GetUserId(accessToken string) (int, error) {
 		return []byte(auth.config.TokenKey), nil
 	})
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("could not parse token: %w", err)
 	}
 	claims, ok := token.Claims.(*domain.TokenClaims)
 	if !ok {
 		return 0, errors.New("token is not valid")
 	}
 	if claims.StandardClaims.ExpiresAt < time.Now().Unix() {
-		return 0, errors.New("token has expired")
+		return 0, errors.New("token expired")
 	}
 	return claims.UserID, nil
 }

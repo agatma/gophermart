@@ -5,32 +5,34 @@ import (
 	"errors"
 	"fmt"
 	"gophermart/internal/adapters/storage/postgres"
+	"gophermart/internal/config"
 	"gophermart/internal/core/domain"
+	"gophermart/internal/logger"
 )
 
 type Authorization interface {
 	CreateUser(ctx context.Context, user *domain.UserIn) error
-	GetUserId(ctx context.Context, user *domain.UserIn) (int, error)
+	GetUserID(ctx context.Context, user *domain.UserIn) (int, error)
 }
 
 type Order interface {
 	CreateOrder(ctx context.Context, userID int, order *domain.OrderIn) error
-	UpdateOrder(ctx context.Context, userID int, order *domain.AccrualOut) error
+	UpdateOrder(ctx context.Context, order *domain.AccrualOut) error
 	GetOrder(ctx context.Context, order *domain.OrderIn) (*domain.OrderOut, error)
 	GetAllOrders(ctx context.Context, userID int) (domain.OrderOutList, error)
 	GetAllOrdersByStatus(ctx context.Context, status string) (domain.OrderOutList, error)
 }
 
-type Withdraw interface {
+type Withdrawal interface {
 	GetBalance(ctx context.Context, userID int) (*domain.BalanceOut, error)
-	Withdraw(ctx context.Context, userID int, withdraw *domain.WithdrawIn) error
-	GetAllWithdraws(ctx context.Context, userID int) (domain.WithdrawOutList, error)
+	WithdrawBonuses(ctx context.Context, userID int, withdraw *domain.WithdrawalIn) error
+	GetAllWithdrawals(ctx context.Context, userID int) (domain.WithdrawOutList, error)
 }
 
 type Storage struct {
 	Authorization
 	Order
-	Withdraw
+	Withdrawal
 }
 
 func NewStorage(cfg Config) (*Storage, error) {
@@ -42,8 +44,24 @@ func NewStorage(cfg Config) (*Storage, error) {
 		return &Storage{
 			Authorization: postgres.NewAuthPostgres(db),
 			Order:         postgres.NewOrderPostgres(db),
-			Withdraw:      postgres.NewWithdrawPostgres(db),
+			Withdrawal:    postgres.NewWithdrawPostgres(db),
 		}, nil
 	}
 	return nil, errors.New("no available storage")
+}
+
+func InitStorage(cfg *config.Config) (*Storage, error) {
+	if cfg.DatabaseURI == "" {
+		return nil, errors.New("postgres uri is required")
+	}
+	postgresStorage, err := NewStorage(Config{
+		Postgres: &postgres.Config{
+			DSN: cfg.DatabaseURI,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init db storage %w", err)
+	}
+	logger.Log.Info("db storage is initialized")
+	return postgresStorage, nil
 }

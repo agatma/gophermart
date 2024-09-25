@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -16,10 +17,10 @@ const (
 
 func closeBody(req *http.Request) error {
 	if _, err := io.Copy(io.Discard, req.Body); err != nil {
-		return err
+		return fmt.Errorf("discard body error: %w", err)
 	}
 	if err := req.Body.Close(); err != nil {
-		return err
+		return fmt.Errorf("close body error: %w", err)
 	}
 	return nil
 }
@@ -27,11 +28,11 @@ func closeBody(req *http.Request) error {
 func getUserID(req *http.Request) (int, error) {
 	user := req.Header.Get(userIDKey)
 	if user == "" {
-		return 0, errors.New("user id not found")
+		return 0, errors.New("userID not found")
 	}
 	userID, err := strconv.Atoi(user)
 	if err != nil {
-		return 0, errors.New("user id is of invalid type")
+		return 0, errors.New("userID has invalid type")
 	}
 
 	return userID, nil

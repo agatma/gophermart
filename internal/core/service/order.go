@@ -3,51 +3,52 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"gophermart/cmd/pkg/errs"
+	"gophermart/internal/adapters/storage"
 	"gophermart/internal/config"
 
 	"gophermart/internal/core/domain"
+
+	"github.com/ShiraazMoollatjie/goluhn"
 )
 
-type OrderStorage interface {
-	CreateOrder(ctx context.Context, userID int, order *domain.OrderIn) error
-	UpdateOrder(ctx context.Context, userID int, order *domain.AccrualOut) error
-	GetOrder(ctx context.Context, order *domain.OrderIn) (*domain.OrderOut, error)
-	GetAllOrders(ctx context.Context, userID int) (domain.OrderOutList, error)
-	GetAllOrdersByStatus(ctx context.Context, status string) (domain.OrderOutList, error)
-}
-
 type OrderService struct {
-	storage OrderStorage
+	storage storage.Order
 	config  *config.Config
 }
 
-func newOrderService(storage OrderStorage, config *config.Config) *OrderService {
+func newOrderService(storage storage.Order, config *config.Config) *OrderService {
 	return &OrderService{storage: storage, config: config}
 }
 
 func (o *OrderService) CreateOrder(ctx context.Context, userID int, order *domain.OrderIn) error {
-	var err error
-	//if err = goluhn.Validate(order.Number); err != nil {
-	//	return errs.ErrInvalidOrderNumber
-	//}
+	if err := goluhn.Validate(order.Number); err != nil {
+		return errs.ErrInvalidOrderNumber
+	}
 	orderOut, err := o.storage.GetOrder(ctx, order)
 	if err != nil {
-		if !errors.Is(err, errs.ErrOrderNotFound) {
-			return err
+		if !errors.Is(err, errs.ErrNotFound) {
+			return fmt.Errorf("failed to get order: %w", err)
 		}
 	}
 	if orderOut != nil && orderOut.Number != "" {
 		if orderOut.UserID == userID {
 			return errs.ErrOrderAlreadyAdded
-		} else if orderOut.UserID != userID {
+		} else {
 			return errs.ErrUnreachableOrder
 		}
 	}
-	err = o.storage.CreateOrder(ctx, userID, order)
-	return err
+	if err = o.storage.CreateOrder(ctx, userID, order); err != nil {
+		return fmt.Errorf("failed to create order: %w", err)
+	}
+	return nil
 }
 
 func (o *OrderService) GetAllOrders(ctx context.Context, userID int) (domain.OrderOutList, error) {
-	return o.storage.GetAllOrders(ctx, userID)
+	orders, err := o.storage.GetAllOrders(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all orders: %w", err)
+	}
+	return orders, nil
 }

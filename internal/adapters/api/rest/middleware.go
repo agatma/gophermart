@@ -68,7 +68,7 @@ func (h *Handler) authorizeRequestMiddleware(next http.Handler) http.Handler {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
-		userID, err := h.service.GetUserId(accessToken)
+		userID, err := h.service.GetUserID(accessToken)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return

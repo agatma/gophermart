@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"fmt"
+	"gophermart/internal/core/service"
 
 	"net/http"
 	"os"
@@ -22,13 +23,8 @@ const (
 	serverTimeout = 3
 )
 
-type Service interface {
-	AuthService
-	OrderService
-}
-
 type Handler struct {
-	service Service
+	service *service.Service
 	config  *config.Config
 }
 
@@ -53,22 +49,30 @@ func (a *API) Run() error {
 	return nil
 }
 
-func NewAPI(cfg *config.Config, service Service) *API {
+func NewAPI(cfg *config.Config, srv *service.Service) *API {
 	h := &Handler{
 		config:  cfg,
-		service: service,
+		service: srv,
 	}
 	r := chi.NewRouter()
 
 	r.Use(h.loggingRequestMiddleware)
 	r.Use(middleware.Timeout(serverTimeout * time.Second))
-	r.Post("/api/user/register", h.SignUp)
-	r.Post("/api/user/login", h.SignIn)
-
 	r.Route("/api/user", func(r chi.Router) {
-		r.Use(h.authorizeRequestMiddleware)
-		r.Post("/orders", h.CreateOrder)
-		r.Get("/orders", h.GetAllOrders)
+		r.Post("/register", h.SignUp)
+		r.Post("/login", h.SignIn)
+
+		r.Route("/", func(r chi.Router) {
+			r.Use(h.authorizeRequestMiddleware)
+			r.Post("/orders", h.CreateOrder)
+			r.Get("/orders", h.GetAllOrders)
+			r.Get("/withdrawals", h.GetAllWithdrawals)
+
+			r.Route("/balance", func(r chi.Router) {
+				r.Get("/", h.GetBalance)
+				r.Post("/withdraw", h.WithdrawBonuses)
+			})
+		})
 	})
 
 	return &API{
