@@ -1,6 +1,0 @@
-./auth.go
-./helpers.go
-./middleware.go
-./order.go
-./rest.go
-./withdrawal.go
