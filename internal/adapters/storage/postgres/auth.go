@@ -31,9 +31,9 @@ func (ap *AuthPostgres) GetUserID(ctx context.Context, user *domain.UserIn) (int
 	var id int
 	row := ap.db.QueryRowContext(
 		ctx,
-		"SELECT id FROM users WHERE login=$1 AND password_hash=$2",
+		`SELECT id FROM users WHERE login=$1 AND password_hash=$2`,
 		user.Login,
-		user.Password,
+		user.PasswordHash,
 	)
 	if err := row.Scan(&id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -47,11 +47,12 @@ func (ap *AuthPostgres) GetUserID(ctx context.Context, user *domain.UserIn) (int
 func (ap *AuthPostgres) CreateUser(ctx context.Context, user *domain.UserIn) error {
 	var id int
 	var pgxErr *pgconn.PgError
+
 	row := ap.db.QueryRowContext(
 		ctx,
-		"INSERT INTO users (login, password_hash) VALUES ($1, $2) RETURNING id",
+		`INSERT INTO users (login, password_hash) VALUES ($1, $2) RETURNING id`,
 		user.Login,
-		user.Password,
+		user.PasswordHash,
 	)
 	if err := row.Scan(&id); err != nil {
 		ok := errors.As(err, &pgxErr)

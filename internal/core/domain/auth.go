@@ -7,6 +7,7 @@ type User struct {
 }
 
 type UserIn struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
+	Login        string `json:"login"`
+	Password     string `json:"password"`
+	PasswordHash string `json:"-"`
 }

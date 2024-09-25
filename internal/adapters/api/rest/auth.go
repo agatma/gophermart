@@ -33,6 +33,7 @@ func (h *Handler) SignUp(w http.ResponseWriter, req *http.Request) {
 		handleAuthError(w, err)
 		return
 	}
+	h.createToken(w, req, &user)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -53,7 +54,11 @@ func (h *Handler) SignIn(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	token, err := h.service.CreateToken(req.Context(), &user)
+	h.createToken(w, req, &user)
+}
+
+func (h *Handler) createToken(w http.ResponseWriter, req *http.Request, user *domain.UserIn) {
+	token, err := h.service.CreateToken(req.Context(), user)
 	if err != nil {
 		handleAuthError(w, err)
 		return

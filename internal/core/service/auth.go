@@ -23,7 +23,7 @@ func newAuthService(storage storage.Authorization, config *config.Config) *AuthS
 }
 
 func (auth *AuthService) CreateUser(ctx context.Context, user *domain.UserIn) error {
-	user.Password = hash.Encode([]byte(user.Password), auth.config.HashKey)
+	user.PasswordHash = hash.Encode([]byte(user.Password), auth.config.HashKey)
 	if err := auth.storage.CreateUser(ctx, user); err != nil {
 		return fmt.Errorf("could not create user: %w", err)
 	}
@@ -31,7 +31,7 @@ func (auth *AuthService) CreateUser(ctx context.Context, user *domain.UserIn) er
 }
 
 func (auth *AuthService) CreateToken(ctx context.Context, user *domain.UserIn) (string, error) {
-	user.Password = hash.Encode([]byte(user.Password), auth.config.HashKey)
+	user.PasswordHash = hash.Encode([]byte(user.Password), auth.config.HashKey)
 	userID, err := auth.storage.GetUserID(ctx, user)
 	if err != nil {
 		return "", fmt.Errorf("could not get user id: %w", err)
