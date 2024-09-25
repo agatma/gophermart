@@ -39,12 +39,12 @@ func (a *API) Run() error {
 	go func() {
 		<-sigint
 		if err := a.srv.Shutdown(context.Background()); err != nil {
-			logger.Log.Info("server shutdown: ", zap.Error(err))
+			logger.Log.Info("gophermart shutdown: ", zap.Error(err))
 		}
 	}()
 	if err := a.srv.ListenAndServe(); err != nil {
-		logger.Log.Error("error occurred during running server: ", zap.Error(err))
-		return fmt.Errorf("failed run server: %w", err)
+		logger.Log.Error("error occurred during running gophermart: ", zap.Error(err))
+		return fmt.Errorf("failed run gophermart: %w", err)
 	}
 	return nil
 }

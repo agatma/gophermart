@@ -29,7 +29,7 @@ type Config struct {
 
 func NewConfig() (*Config, error) {
 	var cfg Config
-	flag.StringVar(&cfg.Address, "a", ":8080", "port to run server")
+	flag.StringVar(&cfg.Address, "a", ":8080", "port to run gophermart")
 	flag.StringVar(&cfg.DatabaseURI, "d", "postgres://user:password@localhost:5434/gophermart", "postgres uri")
 
 	flag.StringVar(&cfg.AccrualSystemAddress, "r", "http://localhost:8081", "accrual system address")
@@ -45,7 +45,7 @@ func NewConfig() (*Config, error) {
 
 	err := env.Parse(&cfg)
 	if err != nil {
-		return &cfg, fmt.Errorf("failed to get config for server: %w", err)
+		return &cfg, fmt.Errorf("failed to get config for gophermart: %w", err)
 	}
 
 	return &cfg, nil

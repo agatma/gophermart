@@ -31,7 +31,7 @@ func run() error {
 	newService := service.NewService(cfg, activeStorage)
 	api := rest.NewAPI(cfg, newService)
 	if err = api.Run(); err != nil {
-		return fmt.Errorf("server has failed: %w", err)
+		return fmt.Errorf("gophermart has failed: %w", err)
 	}
 	return nil
 }
