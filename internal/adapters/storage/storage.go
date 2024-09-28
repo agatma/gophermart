@@ -7,7 +7,6 @@ import (
 	"gophermart/internal/adapters/storage/postgres"
 	"gophermart/internal/config"
 	"gophermart/internal/core/domain"
-	"gophermart/internal/logger"
 )
 
 type Authorization interface {
@@ -35,33 +34,19 @@ type Storage struct {
 	Withdrawal
 }
 
-func NewStorage(cfg Config) (*Storage, error) {
-	if cfg.Postgres != nil {
-		db, err := postgres.NewDB(cfg.Postgres)
-		if err != nil {
-			return nil, fmt.Errorf("%w", err)
-		}
-		return &Storage{
-			Authorization: postgres.NewAuthPostgres(db),
-			Order:         postgres.NewOrderPostgres(db),
-			Withdrawal:    postgres.NewWithdrawPostgres(db),
-		}, nil
-	}
-	return nil, errors.New("no available storage")
-}
-
-func InitStorage(cfg *config.Config) (*Storage, error) {
+func NewStorage(cfg *config.Config) (*Storage, error) {
 	if cfg.DatabaseURI == "" {
 		return nil, errors.New("postgres uri is required")
 	}
-	postgresStorage, err := NewStorage(Config{
-		Postgres: &postgres.Config{
-			DSN: cfg.DatabaseURI,
-		},
+	db, err := postgres.NewDB(&postgres.Config{
+		DSN: cfg.DatabaseURI,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to init db storage %w", err)
+		return nil, fmt.Errorf("%w", err)
 	}
-	logger.Log.Info("db storage is initialized")
-	return postgresStorage, nil
+	return &Storage{
+		Authorization: postgres.NewAuthPostgres(db),
+		Order:         postgres.NewOrderPostgres(db),
+		Withdrawal:    postgres.NewWithdrawPostgres(db),
+	}, nil
 }

@@ -2,10 +2,22 @@ package service
 
 import (
 	"context"
-	"gophermart/internal/adapters/storage"
 	"gophermart/internal/config"
 	"gophermart/internal/core/domain"
 )
+
+type Storage interface {
+	CreateUser(ctx context.Context, user *domain.UserIn) error
+	GetUserID(ctx context.Context, user *domain.UserIn) (int, error)
+	CreateOrder(ctx context.Context, userID int, order *domain.OrderIn) error
+	UpdateOrder(ctx context.Context, order *domain.AccrualOut) error
+	GetOrder(ctx context.Context, order *domain.OrderIn) (*domain.OrderOut, error)
+	GetAllOrders(ctx context.Context, userID int) (domain.OrderOutList, error)
+	GetAllOrdersByStatus(ctx context.Context, status string) (domain.OrderOutList, error)
+	GetBalance(ctx context.Context, userID int) (*domain.BalanceOut, error)
+	WithdrawBonuses(ctx context.Context, userID int, withdraw *domain.WithdrawalIn) error
+	GetAllWithdrawals(ctx context.Context, userID int) (domain.WithdrawOutList, error)
+}
 
 type Authorization interface {
 	CreateUser(ctx context.Context, user *domain.UserIn) error
@@ -30,7 +42,7 @@ type Service struct {
 	Withdrawal
 }
 
-func NewService(cfg *config.Config, storage *storage.Storage) *Service {
+func NewService(cfg *config.Config, storage Storage) *Service {
 	return &Service{
 		Authorization: newAuthService(storage, cfg),
 		Order:         newOrderService(storage, cfg),

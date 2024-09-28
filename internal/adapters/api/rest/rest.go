@@ -4,8 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gophermart/internal/core/service"
-
+	"gophermart/internal/core/domain"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,8 +23,19 @@ const (
 	serverTimeout = 3
 )
 
+type Service interface {
+	CreateUser(ctx context.Context, user *domain.UserIn) error
+	CreateToken(ctx context.Context, user *domain.UserIn) (string, error)
+	GetUserID(accessToken string) (int, error)
+	CreateOrder(ctx context.Context, userID int, order *domain.OrderIn) error
+	GetAllOrders(ctx context.Context, userID int) (domain.OrderOutList, error)
+	GetBalance(ctx context.Context, userID int) (*domain.BalanceOut, error)
+	WithdrawBonuses(ctx context.Context, userID int, withdraw *domain.WithdrawalIn) error
+	GetAllWithdrawals(ctx context.Context, userID int) (domain.WithdrawOutList, error)
+}
+
 type Handler struct {
-	service *service.Service
+	service Service
 	config  *config.Config
 }
 
@@ -52,7 +62,7 @@ func (a *API) Run() error {
 	return nil
 }
 
-func NewAPI(cfg *config.Config, srv *service.Service) *API {
+func NewAPI(cfg *config.Config, srv Service) *API {
 	h := &Handler{
 		config:  cfg,
 		service: srv,
@@ -61,27 +71,26 @@ func NewAPI(cfg *config.Config, srv *service.Service) *API {
 
 	r.Use(h.loggingRequestMiddleware)
 	r.Use(middleware.Timeout(serverTimeout * time.Second))
-	r.Route("/api/user", func(r chi.Router) {
-		r.Post("/register", h.SignUp)
-		r.Post("/login", h.SignIn)
-
-		r.Route("/", func(r chi.Router) {
-			r.Use(h.authorizeRequestMiddleware)
-			r.Post("/orders", h.CreateOrder)
-			r.Get("/orders", h.GetAllOrders)
-			r.Get("/withdrawals", h.GetAllWithdrawals)
-
-			r.Route("/balance", func(r chi.Router) {
-				r.Get("/", h.GetBalance)
-				r.Post("/withdraw", h.WithdrawBonuses)
-			})
-		})
-	})
-
+	r.Post("/api/user/register", h.SignUp)
+	r.Post("/api/user/login", h.SignIn)
+	r.Mount("/api/user/", ordersRouter(h))
 	return &API{
 		srv: &http.Server{
 			Addr:    cfg.Address,
 			Handler: r,
 		},
 	}
+}
+
+func ordersRouter(h *Handler) chi.Router {
+	r := chi.NewRouter()
+	r.Use(h.authorizeRequestMiddleware)
+	r.Post("/orders", h.CreateOrder)
+	r.Get("/orders", h.GetAllOrders)
+	r.Get("/withdrawals", h.GetAllWithdrawals)
+	r.Route("/balance", func(r chi.Router) {
+		r.Get("/", h.GetBalance)
+		r.Post("/withdraw", h.WithdrawBonuses)
+	})
+	return r
 }

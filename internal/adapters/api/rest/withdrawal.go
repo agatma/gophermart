@@ -22,7 +22,8 @@ func (h *Handler) GetAllWithdrawals(w http.ResponseWriter, req *http.Request) {
 	if len(withdrawals) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
-	} else if err != nil {
+	}
+	if err != nil {
 		logger.Log.Error("error occurred during getting all withdrawals", zap.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -82,6 +83,8 @@ func (h *Handler) WithdrawBonuses(w http.ResponseWriter, req *http.Request) {
 	case errors.Is(err, errs.ErrInvalidOrderNumber):
 		statusCode = http.StatusUnprocessableEntity
 	}
-	logger.Log.Error("error occurred", zap.Error(err))
+	if statusCode == http.StatusInternalServerError {
+		logger.Log.Error("unexpected error occurred during creating order", zap.Error(err))
+	}
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }

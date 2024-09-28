@@ -28,7 +28,7 @@ func run() error {
 	if err = logger.Initialize(cfg.LogLevel); err != nil {
 		return fmt.Errorf("can't load logger: %w", err)
 	}
-	activeStorage, err := storage.InitStorage(cfg)
+	activeStorage, err := storage.NewStorage(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to initialize a storage: %w", err)
 	}

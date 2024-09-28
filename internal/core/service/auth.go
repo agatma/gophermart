@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gophermart/internal/adapters/storage"
 	"gophermart/internal/config"
 	"gophermart/internal/core/domain"
 	"gophermart/internal/shared-kernel/hash"
@@ -14,11 +13,11 @@ import (
 )
 
 type AuthService struct {
-	storage storage.Authorization
+	storage Storage
 	config  *config.Config
 }
 
-func newAuthService(storage storage.Authorization, config *config.Config) *AuthService {
+func newAuthService(storage Storage, config *config.Config) *AuthService {
 	return &AuthService{storage: storage, config: config}
 }
 

@@ -35,9 +35,8 @@ func (o *OrderService) CreateOrder(ctx context.Context, userID int, order *domai
 	if orderOut != nil && orderOut.Number != "" {
 		if orderOut.UserID == userID {
 			return errs.ErrOrderAlreadyAdded
-		} else {
-			return errs.ErrUnreachableOrder
 		}
+		return errs.ErrUnreachableOrder
 	}
 	if err = o.storage.CreateOrder(ctx, userID, order); err != nil {
 		return fmt.Errorf("failed to create order: %w", err)
