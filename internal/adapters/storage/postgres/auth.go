@@ -9,26 +9,15 @@ import (
 	"gophermart/internal/errs"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jmoiron/sqlx"
 )
 
 const (
 	PGUniqueViolationCode = "23505"
 )
 
-type AuthPostgres struct {
-	db *sqlx.DB
-}
-
-func NewAuthPostgres(db *sqlx.DB) *AuthPostgres {
-	return &AuthPostgres{
-		db: db,
-	}
-}
-
-func (ap *AuthPostgres) GetUserID(ctx context.Context, user *domain.UserIn) (int, error) {
+func (s *Storage) GetUserID(ctx context.Context, user *domain.UserIn) (int, error) {
 	var id int
-	row := ap.db.QueryRowContext(
+	row := s.db.QueryRowContext(
 		ctx,
 		`SELECT id FROM users WHERE login=$1 AND password_hash=$2`,
 		user.Login,
@@ -43,11 +32,11 @@ func (ap *AuthPostgres) GetUserID(ctx context.Context, user *domain.UserIn) (int
 	return id, nil
 }
 
-func (ap *AuthPostgres) CreateUser(ctx context.Context, user *domain.UserIn) error {
+func (s *Storage) CreateUser(ctx context.Context, user *domain.UserIn) error {
 	var id int
 	var pgxErr *pgconn.PgError
 
-	row := ap.db.QueryRowContext(
+	row := s.db.QueryRowContext(
 		ctx,
 		`INSERT INTO users (login, password_hash) VALUES ($1, $2) RETURNING id`,
 		user.Login,

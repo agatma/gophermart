@@ -10,24 +10,13 @@ import (
 	"gophermart/internal/logger"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
 const accrualFactor = 100
 
-type OrderPostgres struct {
-	db *sqlx.DB
-}
-
-func NewOrderPostgres(db *sqlx.DB) *OrderPostgres {
-	return &OrderPostgres{
-		db: db,
-	}
-}
-
-func (op *OrderPostgres) CreateOrder(ctx context.Context, userID int, order *domain.OrderIn) error {
-	_, err := op.db.ExecContext(
+func (s *Storage) CreateOrder(ctx context.Context, userID int, order *domain.OrderIn) error {
+	_, err := s.db.ExecContext(
 		ctx,
 		"INSERT INTO orders (user_id, number, status) VALUES ($1, $2, $3)",
 		userID,
@@ -40,11 +29,11 @@ func (op *OrderPostgres) CreateOrder(ctx context.Context, userID int, order *dom
 	return nil
 }
 
-func (op *OrderPostgres) UpdateOrder(ctx context.Context, order *domain.AccrualOut) error {
+func (s *Storage) UpdateOrder(ctx context.Context, order *domain.AccrualOut) error {
 	var err error
 	if order.Accrual != nil {
 		accrual := int64(*order.Accrual * accrualFactor)
-		_, err = op.db.ExecContext(
+		_, err = s.db.ExecContext(
 			ctx,
 			`UPDATE orders SET status=$1, accrual=$2, updated_at=$3 WHERE number=$4`,
 			order.Status,
@@ -53,7 +42,7 @@ func (op *OrderPostgres) UpdateOrder(ctx context.Context, order *domain.AccrualO
 			order.Order,
 		)
 	} else {
-		_, err = op.db.ExecContext(
+		_, err = s.db.ExecContext(
 			ctx,
 			`UPDATE orders SET status=$1, updated_at=$2 WHERE number=$3`,
 			order.Status,
@@ -66,12 +55,12 @@ func (op *OrderPostgres) UpdateOrder(ctx context.Context, order *domain.AccrualO
 	return nil
 }
 
-func (op *OrderPostgres) GetOrder(ctx context.Context, order *domain.OrderIn) (*domain.OrderOut, error) {
+func (s *Storage) GetOrder(ctx context.Context, order *domain.OrderIn) (*domain.OrderOut, error) {
 	var (
 		orderOut domain.OrderOut
 		accrual  sql.NullInt64
 	)
-	row := op.db.QueryRowContext(
+	row := s.db.QueryRowContext(
 		ctx,
 		`SELECT number, status, user_id, accrual, updated_at 
 			   FROM orders 
@@ -96,8 +85,8 @@ func (op *OrderPostgres) GetOrder(ctx context.Context, order *domain.OrderIn) (*
 	return &orderOut, nil
 }
 
-func (op *OrderPostgres) GetAllOrders(ctx context.Context, userID int) (domain.OrderOutList, error) {
-	rows, err := op.db.QueryContext(
+func (s *Storage) GetAllOrders(ctx context.Context, userID int) (domain.OrderOutList, error) {
+	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT number, status, user_id, accrual, updated_at 
 			   FROM orders 
@@ -107,15 +96,15 @@ func (op *OrderPostgres) GetAllOrders(ctx context.Context, userID int) (domain.O
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders in PG: %w", err)
 	}
-	orders, err := op.parseOrderRows(rows)
+	orders, err := s.parseOrderRows(rows)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders in PG: %w", err)
 	}
 	return orders, nil
 }
 
-func (op *OrderPostgres) GetAllOrdersByStatus(ctx context.Context, status string) (domain.OrderOutList, error) {
-	rows, err := op.db.QueryContext(
+func (s *Storage) GetAllOrdersByStatus(ctx context.Context, status string) (domain.OrderOutList, error) {
+	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT number, status, user_id, accrual, updated_at 
 			   FROM orders 
@@ -125,14 +114,14 @@ func (op *OrderPostgres) GetAllOrdersByStatus(ctx context.Context, status string
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders in PG: %w", err)
 	}
-	orders, err := op.parseOrderRows(rows)
+	orders, err := s.parseOrderRows(rows)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse orders in PG: %w", err)
 	}
 	return orders, nil
 }
 
-func (op *OrderPostgres) parseOrderRows(rows *sql.Rows) (domain.OrderOutList, error) {
+func (s *Storage) parseOrderRows(rows *sql.Rows) (domain.OrderOutList, error) {
 	defer func() {
 		err := rows.Close()
 		if err != nil {

@@ -7,7 +7,11 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func NewDB(cfg *Config) (*sqlx.DB, error) {
+type Storage struct {
+	db *sqlx.DB
+}
+
+func NewPostgresStorage(cfg *Config) (*Storage, error) {
 	db, err := sqlx.Open("pgx", cfg.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open postgres %w", err)
@@ -19,5 +23,5 @@ func NewDB(cfg *Config) (*sqlx.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to migrate %w", err)
 	}
-	return db, nil
+	return &Storage{db: db}, nil
 }

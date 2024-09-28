@@ -10,25 +10,14 @@ import (
 	"gophermart/internal/logger"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
-
-type WithdrawalPostgres struct {
-	db *sqlx.DB
-}
-
-func NewWithdrawPostgres(db *sqlx.DB) *WithdrawalPostgres {
-	return &WithdrawalPostgres{
-		db: db,
-	}
-}
 
 type Transaction interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-func (wp *WithdrawalPostgres) getBalance(ctx context.Context, tx Transaction, userID int) (*domain.BalanceOut, error) {
+func (s *Storage) getBalance(ctx context.Context, tx Transaction, userID int) (*domain.BalanceOut, error) {
 	var balance domain.BalanceOut
 	row := tx.QueryRowContext(
 		ctx,
@@ -56,21 +45,21 @@ func (wp *WithdrawalPostgres) getBalance(ctx context.Context, tx Transaction, us
 	return &balance, nil
 }
 
-func (wp *WithdrawalPostgres) GetBalance(ctx context.Context, userID int) (*domain.BalanceOut, error) {
-	balance, err := wp.getBalance(ctx, wp.db, userID)
+func (s *Storage) GetBalance(ctx context.Context, userID int) (*domain.BalanceOut, error) {
+	balance, err := s.getBalance(ctx, s.db, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get balance in PG: %w", err)
 	}
 	return balance, nil
 }
 
-func (wp *WithdrawalPostgres) WithdrawBonuses(ctx context.Context, userID int, withdraw *domain.WithdrawalIn) error {
+func (s *Storage) WithdrawBonuses(ctx context.Context, userID int, withdraw *domain.WithdrawalIn) error {
 	var pgxErr *pgconn.PgError
-	tx, err := wp.db.Begin()
+	tx, err := s.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
-	balance, err := wp.getBalance(ctx, tx, userID)
+	balance, err := s.getBalance(ctx, tx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get balance for withdraw bonuses: %w", err)
 	}
@@ -103,9 +92,9 @@ func (wp *WithdrawalPostgres) WithdrawBonuses(ctx context.Context, userID int, w
 	return nil
 }
 
-func (wp *WithdrawalPostgres) GetAllWithdrawals(ctx context.Context, userID int) (domain.WithdrawOutList, error) {
+func (s *Storage) GetAllWithdrawals(ctx context.Context, userID int) (domain.WithdrawOutList, error) {
 	withdrawals := make(domain.WithdrawOutList, 0)
-	rows, err := wp.db.QueryContext(
+	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT number, withdraw, updated_at
 			   FROM orders 

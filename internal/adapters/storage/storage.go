@@ -28,25 +28,21 @@ type Withdrawal interface {
 	GetAllWithdrawals(ctx context.Context, userID int) (domain.WithdrawOutList, error)
 }
 
-type Storage struct {
+type Storage interface {
 	Authorization
 	Order
 	Withdrawal
 }
 
-func NewStorage(cfg *config.Config) (*Storage, error) {
+func NewStorage(cfg *config.Config) (Storage, error) {
 	if cfg.DatabaseURI == "" {
 		return nil, errors.New("postgres uri is required")
 	}
-	db, err := postgres.NewDB(&postgres.Config{
+	pgStorage, err := postgres.NewPostgresStorage(&postgres.Config{
 		DSN: cfg.DatabaseURI,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
-	return &Storage{
-		Authorization: postgres.NewAuthPostgres(db),
-		Order:         postgres.NewOrderPostgres(db),
-		Withdrawal:    postgres.NewWithdrawPostgres(db),
-	}, nil
+	return pgStorage, nil
 }
