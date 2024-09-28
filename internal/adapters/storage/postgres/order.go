@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"gophermart/cmd/pkg/errs"
 	"gophermart/internal/core/domain"
+	"gophermart/internal/errs"
 	"gophermart/internal/logger"
 	"time"
 

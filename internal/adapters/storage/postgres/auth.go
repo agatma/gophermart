@@ -6,8 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"gophermart/internal/core/domain"
-
-	"gophermart/cmd/pkg/errs"
+	"gophermart/internal/errs"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"

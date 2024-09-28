@@ -2,8 +2,6 @@ package rest
 
 import (
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 )
@@ -14,16 +12,6 @@ const (
 	authorization   = "Authorization"
 	userIDKey       = "userID"
 )
-
-func closeBody(req *http.Request) error {
-	if _, err := io.Copy(io.Discard, req.Body); err != nil {
-		return fmt.Errorf("discard body error: %w", err)
-	}
-	if err := req.Body.Close(); err != nil {
-		return fmt.Errorf("close body error: %w", err)
-	}
-	return nil
-}
 
 func getUserID(req *http.Request) (int, error) {
 	user := req.Header.Get(userIDKey)

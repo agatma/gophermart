@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gophermart/cmd/pkg/errs"
 	"gophermart/internal/adapters/api/validation"
 	"gophermart/internal/core/domain"
+	"gophermart/internal/errs"
 	"gophermart/internal/logger"
 	"net/http"
 
@@ -23,11 +23,6 @@ func (h *Handler) SignUp(w http.ResponseWriter, req *http.Request) {
 	if err := validation.ValidateUserIn(&user); err != nil {
 		logger.Log.Info("userIn validation error", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if err := closeBody(req); err != nil {
-		logger.Log.Info("cannot close body in signUp", zap.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	if err := h.service.CreateUser(req.Context(), &user); err != nil {
@@ -48,11 +43,6 @@ func (h *Handler) SignIn(w http.ResponseWriter, req *http.Request) {
 	if err := validation.ValidateUserIn(&user); err != nil {
 		logger.Log.Info("userIn validation error", zap.Error(err))
 		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if err := closeBody(req); err != nil {
-		logger.Log.Info("cannot close body in signIn", zap.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	h.createToken(w, req, &user)

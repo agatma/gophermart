@@ -1,8 +1,8 @@
 package validation
 
 import (
-	"gophermart/cmd/pkg/errs"
 	"gophermart/internal/core/domain"
+	"gophermart/internal/errs"
 )
 
 func ValidateUserIn(userIn *domain.UserIn) error {

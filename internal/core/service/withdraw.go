@@ -3,10 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"gophermart/cmd/pkg/errs"
 	"gophermart/internal/adapters/storage"
 	"gophermart/internal/config"
 	"gophermart/internal/core/domain"
+	"gophermart/internal/errs"
 
 	"github.com/ShiraazMoollatjie/goluhn"
 )

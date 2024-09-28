@@ -3,9 +3,9 @@ package rest
 import (
 	"encoding/json"
 	"errors"
-	"gophermart/cmd/pkg/errs"
 	"gophermart/internal/adapters/api/validation"
 	"gophermart/internal/core/domain"
+	"gophermart/internal/errs"
 	"gophermart/internal/logger"
 	"net/http"
 
@@ -70,21 +70,18 @@ func (h *Handler) WithdrawBonuses(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if err = closeBody(req); err != nil {
-		logger.Log.Info("cannot close body in WithdrawBonuses", zap.Error(err))
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+	err = h.service.WithdrawBonuses(req.Context(), userID, &withdraw)
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if err = h.service.WithdrawBonuses(req.Context(), userID, &withdraw); err != nil {
-		statusCode := http.StatusInternalServerError
-		switch {
-		case errors.Is(err, errs.ErrNotEnoughFunds):
-			statusCode = http.StatusPaymentRequired
-		case errors.Is(err, errs.ErrInvalidOrderNumber):
-			statusCode = http.StatusUnprocessableEntity
-		}
-		logger.Log.Error("error occurred", zap.Error(err))
-		http.Error(w, http.StatusText(statusCode), statusCode)
-		return
+	statusCode := http.StatusInternalServerError
+	switch {
+	case errors.Is(err, errs.ErrNotEnoughFunds):
+		statusCode = http.StatusPaymentRequired
+	case errors.Is(err, errs.ErrInvalidOrderNumber):
+		statusCode = http.StatusUnprocessableEntity
 	}
+	logger.Log.Error("error occurred", zap.Error(err))
+	http.Error(w, http.StatusText(statusCode), statusCode)
 }

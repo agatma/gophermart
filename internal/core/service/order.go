@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gophermart/cmd/pkg/errs"
 	"gophermart/internal/adapters/storage"
 	"gophermart/internal/config"
+	"gophermart/internal/errs"
 
 	"gophermart/internal/core/domain"
 

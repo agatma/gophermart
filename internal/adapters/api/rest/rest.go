@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gophermart/internal/core/service"
 
@@ -44,7 +45,9 @@ func (a *API) Run() error {
 	}()
 	if err := a.srv.ListenAndServe(); err != nil {
 		logger.Log.Error("error occurred during running gophermart: ", zap.Error(err))
-		return fmt.Errorf("failed run gophermart: %w", err)
+		if !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("failed run gophermart: %w", err)
+		}
 	}
 	return nil
 }

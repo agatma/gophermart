@@ -3,8 +3,8 @@ package rest
 import (
 	"encoding/json"
 	"errors"
-	"gophermart/cmd/pkg/errs"
 	"gophermart/internal/core/domain"
+	"gophermart/internal/errs"
 	"gophermart/internal/logger"
 	"io"
 	"net/http"
@@ -19,31 +19,27 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-	if err = closeBody(req); err != nil {
-		logger.Log.Info("cannot close body in createOrder", zap.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
 	userID, err := getUserID(req)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
-	if err = h.service.CreateOrder(req.Context(), userID, &domain.OrderIn{Number: string(orderNumber)}); err != nil {
-		statusCode := http.StatusInternalServerError
-		switch {
-		case errors.Is(err, errs.ErrOrderAlreadyAdded):
-			statusCode = http.StatusOK
-		case errors.Is(err, errs.ErrUnreachableOrder):
-			statusCode = http.StatusConflict
-		case errors.Is(err, errs.ErrInvalidOrderNumber):
-			statusCode = http.StatusUnprocessableEntity
-		}
-		logger.Log.Error("error occurred during creating order", zap.Error(err))
-		http.Error(w, http.StatusText(statusCode), statusCode)
+	err = h.service.CreateOrder(req.Context(), userID, &domain.OrderIn{Number: string(orderNumber)})
+	if err == nil {
+		w.WriteHeader(http.StatusAccepted)
 		return
 	}
-	w.WriteHeader(http.StatusAccepted)
+	statusCode := http.StatusInternalServerError
+	switch {
+	case errors.Is(err, errs.ErrOrderAlreadyAdded):
+		statusCode = http.StatusOK
+	case errors.Is(err, errs.ErrUnreachableOrder):
+		statusCode = http.StatusConflict
+	case errors.Is(err, errs.ErrInvalidOrderNumber):
+		statusCode = http.StatusUnprocessableEntity
+	}
+	logger.Log.Error("error occurred during creating order", zap.Error(err))
+	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
 func (h *Handler) GetAllOrders(w http.ResponseWriter, req *http.Request) {
