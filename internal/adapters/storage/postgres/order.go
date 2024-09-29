@@ -7,22 +7,15 @@ import (
 	"fmt"
 	"gophermart/internal/core/domain"
 	"gophermart/internal/errs"
-	"gophermart/internal/logger"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/jackc/pgx/v5"
 )
 
 const accrualFactor = 100
 
 func (s *Storage) CreateOrder(ctx context.Context, userID int, order *domain.OrderIn) error {
-	_, err := s.db.ExecContext(
-		ctx,
-		"INSERT INTO orders (user_id, number, status) VALUES ($1, $2, $3)",
-		userID,
-		order.Number,
-		domain.New,
-	)
+	_, err := s.db.Exec(ctx, createOrderSQL, userID, order.Number, domain.New)
 	if err != nil {
 		return fmt.Errorf("could not create order: %w", err)
 	}
@@ -33,21 +26,9 @@ func (s *Storage) UpdateOrder(ctx context.Context, order *domain.AccrualOut) err
 	var err error
 	if order.Accrual != nil {
 		accrual := int64(*order.Accrual * accrualFactor)
-		_, err = s.db.ExecContext(
-			ctx,
-			`UPDATE orders SET status=$1, accrual=$2, updated_at=$3 WHERE number=$4`,
-			order.Status,
-			accrual,
-			time.Now(),
-			order.Order,
-		)
+		_, err = s.db.Exec(ctx, updateOrderWithAccrualSQL, order.Status, accrual, time.Now(), order.Order)
 	} else {
-		_, err = s.db.ExecContext(
-			ctx,
-			`UPDATE orders SET status=$1, updated_at=$2 WHERE number=$3`,
-			order.Status,
-			time.Now(), order.Order,
-		)
+		_, err = s.db.Exec(ctx, updateOrderSQL, order.Status, time.Now(), order.Order)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to update order in PG: %w", err)
@@ -60,24 +41,14 @@ func (s *Storage) GetOrder(ctx context.Context, order *domain.OrderIn) (*domain.
 		orderOut domain.OrderOut
 		accrual  sql.NullInt64
 	)
-	row := s.db.QueryRowContext(
-		ctx,
-		`SELECT number, status, user_id, accrual, updated_at 
-			   FROM orders 
-			   WHERE number=$1`,
-		order.Number,
-	)
-	if row.Err() != nil {
-		return nil, fmt.Errorf("failed to get order in PG: %w", row.Err())
-	}
+	row := s.db.QueryRow(ctx, getOrderSQL, order.Number)
 	err := row.Scan(&orderOut.Number, &orderOut.Status, &orderOut.UserID, &accrual, &orderOut.UploadedAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get order in PG: %w", err)
 	}
-
 	if accrual.Valid {
 		value := float32(accrual.Int64) / accrualFactor
 		orderOut.Accrual = &value
@@ -86,13 +57,7 @@ func (s *Storage) GetOrder(ctx context.Context, order *domain.OrderIn) (*domain.
 }
 
 func (s *Storage) GetAllOrders(ctx context.Context, userID int) (domain.OrderOutList, error) {
-	rows, err := s.db.QueryContext(
-		ctx,
-		`SELECT number, status, user_id, accrual, updated_at 
-			   FROM orders 
-			   WHERE user_id=$1 AND withdraw IS NULL ORDER BY updated_at`,
-		userID,
-	)
+	rows, err := s.db.Query(ctx, getAllOrdersByUserIDSQL, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders in PG: %w", err)
 	}
@@ -104,13 +69,7 @@ func (s *Storage) GetAllOrders(ctx context.Context, userID int) (domain.OrderOut
 }
 
 func (s *Storage) GetAllOrdersByStatus(ctx context.Context, status string) (domain.OrderOutList, error) {
-	rows, err := s.db.QueryContext(
-		ctx,
-		`SELECT number, status, user_id, accrual, updated_at 
-			   FROM orders 
-			   WHERE status=$1 AND withdraw IS NULL ORDER BY updated_at`,
-		status,
-	)
+	rows, err := s.db.Query(ctx, getAllOrdersByStatusSQL, status)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get orders in PG: %w", err)
 	}
@@ -121,12 +80,9 @@ func (s *Storage) GetAllOrdersByStatus(ctx context.Context, status string) (doma
 	return orders, nil
 }
 
-func (s *Storage) parseOrderRows(rows *sql.Rows) (domain.OrderOutList, error) {
+func (s *Storage) parseOrderRows(rows pgx.Rows) (domain.OrderOutList, error) {
 	defer func() {
-		err := rows.Close()
-		if err != nil {
-			logger.Log.Error("error occurred during closing rows", zap.Error(err))
-		}
+		rows.Close()
 	}()
 	orders := make(domain.OrderOutList, 0)
 	for rows.Next() {

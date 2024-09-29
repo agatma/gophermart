@@ -17,12 +17,7 @@ const (
 
 func (s *Storage) GetUserID(ctx context.Context, user *domain.UserIn) (int, error) {
 	var id int
-	row := s.db.QueryRowContext(
-		ctx,
-		`SELECT id FROM users WHERE login=$1 AND password_hash=$2`,
-		user.Login,
-		user.PasswordHash,
-	)
+	row := s.db.QueryRow(ctx, getUserIDSQL, user.Login, user.PasswordHash)
 	if err := row.Scan(&id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, errs.ErrInvalidLoginOrPassword
@@ -33,15 +28,11 @@ func (s *Storage) GetUserID(ctx context.Context, user *domain.UserIn) (int, erro
 }
 
 func (s *Storage) CreateUser(ctx context.Context, user *domain.UserIn) error {
-	var id int
-	var pgxErr *pgconn.PgError
-
-	row := s.db.QueryRowContext(
-		ctx,
-		`INSERT INTO users (login, password_hash) VALUES ($1, $2) RETURNING id`,
-		user.Login,
-		user.PasswordHash,
+	var (
+		id     int
+		pgxErr *pgconn.PgError
 	)
+	row := s.db.QueryRow(ctx, createUserSQL, user.Login, user.PasswordHash)
 	if err := row.Scan(&id); err != nil {
 		ok := errors.As(err, &pgxErr)
 		if ok && pgxErr.Code == PGUniqueViolationCode {
