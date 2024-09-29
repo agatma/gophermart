@@ -121,15 +121,12 @@ func (s *Service) processOrder(ctx context.Context, orderNumber string) error {
 	return nil
 }
 
-func (s *Service) Run(ctx context.Context) {
-	ctx, cancel := context.WithCancel(ctx)
+func (s *Service) Run(ctx context.Context) error {
 	orders := make(chan string, tasksCapacity)
-
-	g := new(errgroup.Group)
+	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		err := s.getOrders(ctx, orders)
 		if err != nil {
-			cancel()
 			return fmt.Errorf("error occurred during getting orders: %w", err)
 		}
 		return nil
@@ -138,15 +135,16 @@ func (s *Service) Run(ctx context.Context) {
 		g.Go(func() error {
 			err := s.worker(ctx, orders, w)
 			if err != nil {
-				cancel()
-				return fmt.Errorf("error occurred in worker: %w", err)
+				return fmt.Errorf("error occurred during worker: %w", err)
 			}
 			return nil
 		})
 	}
 	if err := g.Wait(); err != nil {
-		logger.Log.Error("error occurred", zap.Error(err))
+		logger.Log.Error("error occurred in accrual run", zap.Error(err))
+		return fmt.Errorf("error occurred in accrual run: %w", err)
 	}
+	return nil
 }
 
 func (s *Service) worker(ctx context.Context, orders <-chan string, id int) error {

@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"gophermart/internal/core/domain"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"gophermart/internal/config"
@@ -43,13 +40,10 @@ type API struct {
 	srv *http.Server
 }
 
-func (a *API) Run() error {
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-
+func (a *API) Run(ctx context.Context) error {
 	go func() {
-		<-sigint
-		if err := a.srv.Shutdown(context.Background()); err != nil {
+		<-ctx.Done()
+		if err := a.srv.Shutdown(ctx); err != nil {
 			logger.Log.Info("gophermart shutdown: ", zap.Error(err))
 		}
 	}()
